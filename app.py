@@ -32,6 +32,26 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STUDENTS_PATH = os.path.join(BASE_DIR, "students.json")
 DATABASE_PATH = os.path.join(BASE_DIR, "attendance", "attendance.db")
 ATTENDANCE_PATH = os.path.dirname(DATABASE_PATH)
+os.makedirs(ATTENDANCE_PATH, exist_ok=True)
+
+connection = sqlite3.connect(DATABASE_PATH)
+cursor = connection.cursor()
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT,
+        student_name TEXT,
+        date TEXT,
+        time TEXT,
+        status TEXT,
+        UNIQUE(student_id, date)
+    )
+""")
+
+connection.commit()
+connection.close()
+
 MODEL_PATH = os.path.join(BASE_DIR, "models", "face_model.yml")
 LABELS_PATH = os.path.join(BASE_DIR, "models", "labels.json")
 CASCADE_PATH = os.path.join(BASE_DIR, "haarcascade_frontalface_default.xml")
