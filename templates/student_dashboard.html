@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Student Dashboard</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f4f6f9;
+            color: #333;
+        }
+
+        .header {
+            background: #243b55;
+            color: white;
+            padding: 20px 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .logout {
+            color: white;
+            text-decoration: none;
+            background: #c62828;
+            padding: 10px 18px;
+            border-radius: 7px;
+        }
+
+        .container {
+            padding: 35px;
+        }
+
+        .welcome {
+            margin-bottom: 30px;
+        }
+
+        .welcome h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .welcome p {
+            color: #777;
+        }
+
+        .profile {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .profile h3 {
+            margin-bottom: 15px;
+        }
+
+        .profile p {
+            margin: 8px 0;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .card .icon {
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .card h3 {
+            font-size: 30px;
+            margin-bottom: 5px;
+        }
+
+        .card p {
+            color: #777;
+        }
+
+        .history {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .history h3 {
+            margin-bottom: 20px;
+        }
+
+        /* MONTH SELECTOR */
+
+        .month-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .month-selector label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .month-selector input {
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            font-size: 15px;
+            margin-right: 8px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 11px 18px;
+            border: none;
+            border-radius: 7px;
+            background: #243b55;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .button:hover {
+            background: #1b2d42;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f4f6f9;
+        }
+
+        .present {
+            color: green;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            color: #777;
+            padding: 30px;
+        }
+
+        @media (max-width: 800px) {
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            .month-selector input {
+                margin-bottom: 10px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+        <h1>🎓 AI Attendance System</h1>
+
+        <a href="/logout" class="logout">
+            Logout
+        </a>
+
+    </div>
+
+
+    <!-- MAIN CONTAINER -->
+
+    <div class="container">
+
+
+        <!-- WELCOME -->
+
+        <div class="welcome">
+
+            <h2>
+                👨‍🎓 Welcome, {{ student.name }}
+            </h2>
+
+            <p>
+                Here you can view your attendance information.
+            </p>
+
+        </div>
+
+
+        <!-- STUDENT PROFILE -->
+
+        <div class="profile">
+
+            <h3>👤 Student Profile</h3>
+
+            <p>
+                <strong>Name:</strong>
+                {{ student.name }}
+            </p>
+
+            <p>
+                <strong>Student ID:</strong>
+                {{ student_id }}
+            </p>
+
+            <p>
+                <strong>Department:</strong>
+                {{ student.department }}
+            </p>
+
+            <p>
+                <strong>Year:</strong>
+                {{ student.year }}
+            </p>
+
+            <p>
+                <strong>Section:</strong>
+                {{ student.section }}
+            </p>
+
+        </div>
+
+
+        <!-- ATTENDANCE CARDS -->
+
+        <div class="cards">
+
+            <div class="card">
+
+                <div class="icon">
+                    📊
+                </div>
+
+                <h3>
+                    {{ attendance_percentage }}%
+                </h3>
+
+                <p>
+                    Attendance Percentage
+                </p>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="icon">
+                    🟢
+                </div>
+
+                <h3>
+                    {{ present_days }}
+                </h3>
+
+                <p>
+                    Present Days
+                </p>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="icon">
+                    🔴
+                </div>
+
+                <h3>
+                    {{ absent_days }}
+                </h3>
+
+                <p>
+                    Absent Days
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- MONTH SELECTOR -->
+
+        <div class="month-selector">
+
+            <form method="GET" action="/student">
+
+                <label for="month">
+                    📅 Select Month:
+                </label>
+
+                <input
+                    type="month"
+                    id="month"
+                    name="month"
+                    value="{{ selected_month }}"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    class="button"
+                >
+                    📊 View Attendance
+                </button>
+
+            </form>
+
+        </div>
+
+
+        <!-- ATTENDANCE HISTORY -->
+
+        <div class="history">
+
+            <h3>
+                📅 Attendance History
+            </h3>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Time
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% if attendance_records %}
+
+                        {% for record in attendance_records %}
+
+                        <tr>
+
+                            <td>
+                                {{ record["date"] }}
+                            </td>
+
+                            <td>
+                                {{ record["time"] }}
+                            </td>
+
+                            <td class="present">
+                                {{ record["status"] }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td
+                                colspan="3"
+                                class="empty"
+                            >
+                                No attendance records found for this month.
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Attendance database and generated reports
+attendance/*.db
+attendance/*.xlsx
+
+# Training images
+dataset/
+
+# Original uploaded photos
+students photos/
+
+# Logs
+*.log

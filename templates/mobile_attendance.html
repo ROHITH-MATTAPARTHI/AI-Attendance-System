@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Mobile Attendance</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            padding: 15px;
+        }
+
+        h2 {
+            margin: 8px 0 5px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #bbb;
+            margin-bottom: 15px;
+        }
+
+        /* =========================
+           CAMERA
+        ========================= */
+
+        .camera-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            overflow: hidden;
+            border-radius: 16px;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            background: #000;
+        }
+
+        /* Front camera preview only */
+        video.front-camera {
+            transform: scaleX(-1);
+        }
+
+        /* =========================
+           FACE OVAL
+        ========================= */
+
+        .face-guide {
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
+
+            width: 58%;
+            height: 78%;
+
+            transform: translate(-50%, -50%);
+
+            border: 4px solid white;
+            border-radius: 50%;
+
+            pointer-events: none;
+
+            box-shadow:
+                0 0 0 9999px rgba(0, 0, 0, 0.20);
+        }
+
+        .guide-text {
+            position: absolute;
+
+            left: 0;
+            right: 0;
+            bottom: 12px;
+
+            font-size: 14px;
+            color: white;
+
+            text-shadow: 0 1px 3px black;
+
+            pointer-events: none;
+        }
+
+        /* =========================
+           STATUS
+        ========================= */
+
+        .status {
+            min-height: 28px;
+
+            margin-top: 15px;
+
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .verification {
+            min-height: 24px;
+
+            margin-top: 5px;
+
+            font-size: 16px;
+            color: #ccc;
+        }
+
+        /* =========================
+           BUTTONS
+        ========================= */
+
+        button {
+            width: 100%;
+
+            padding: 14px;
+
+            margin-top: 12px;
+
+            border: none;
+            border-radius: 10px;
+
+            font-size: 17px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        #switchCamera {
+            background: #444;
+            color: white;
+        }
+
+        #stopCamera {
+            background: #b71c1c;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        canvas {
+            display: none;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h2>📷 Mobile Attendance</h2>
+
+    <div class="subtitle">
+        Keep one face inside the oval
+    </div>
+
+
+    <!-- CAMERA -->
+
+    <div class="camera-box">
+
+        <video
+            id="video"
+            autoplay
+            playsinline>
+        </video>
+
+        <div class="face-guide"></div>
+
+        <div class="guide-text">
+            Position face inside the oval
+        </div>
+
+    </div>
+
+
+    <!-- STATUS -->
+
+    <div
+        id="status"
+        class="status">
+
+        Starting back camera...
+
+    </div>
+
+
+    <div
+        id="verification"
+        class="verification">
+    </div>
+
+
+    <!-- CAMERA CONTROLS -->
+
+    <button
+        id="switchCamera">
+
+        🔄 Switch Camera
+
+    </button>
+
+
+    <button
+        id="stopCamera">
+
+        ⛔ Stop Camera
+
+    </button>
+
+
+    <canvas id="canvas"></canvas>
+
+</div>
+
+
+<script>
+
+/* =================================
+   ELEMENTS
+================================= */
+
+const video =
+    document.getElementById("video");
+
+const canvas =
+    document.getElementById("canvas");
+
+const statusText =
+    document.getElementById("status");
+
+const verificationText =
+    document.getElementById("verification");
+
+const switchButton =
+    document.getElementById("switchCamera");
+
+const stopButton =
+    document.getElementById("stopCamera");
+
+
+/* =================================
+   CAMERA STATE
+================================= */
+
+/*
+ * BACK CAMERA IS PRIMARY
+ */
+
+let currentCamera = "environment";
+
+let stream = null;
+
+let recognitionRunning = true;
+
+let recognitionBusy = false;
+
+
+/* =================================
+   START CAMERA
+================================= */
+
+async function startCamera() {
+
+    try {
+
+        /*
+         * Stop old camera first
+         */
+
+        if (stream) {
+
+            stream.getTracks().forEach(
+                track => track.stop()
+            );
+
+            stream = null;
+        }
+
+
+        statusText.innerText =
+            currentCamera === "environment"
+                ? "Starting back camera..."
+                : "Starting front camera...";
+
+
+        /*
+         * Try selected camera.
+         */
+
+        try {
+
+            stream =
+                await navigator.mediaDevices.getUserMedia({
+
+                    video: {
+
+                        facingMode: {
+                            ideal: currentCamera
+                        },
+
+                        width: {
+                            ideal: 640
+                        },
+
+                        height: {
+                            ideal: 480
+                        }
+
+                    },
+
+                    audio: false
+
+                });
+
+        }
+
+        catch (cameraError) {
+
+            console.log(
+                "Selected camera failed:",
+                cameraError
+            );
+
+
+            /*
+             * Fallback:
+             * use any available camera.
+             */
+
+            stream =
+                await navigator.mediaDevices.getUserMedia({
+
+                    video: true,
+
+                    audio: false
+
+                });
+
+        }
+
+
+        /*
+         * Attach stream to video.
+         */
+
+        video.srcObject = stream;
+
+
+        /*
+         * Mirror front camera preview.
+         */
+
+        if (currentCamera === "user") {
+
+            video.classList.add(
+                "front-camera"
+            );
+
+        }
+
+        else {
+
+            video.classList.remove(
+                "front-camera"
+            );
+
+        }
+
+
+        /*
+         * Wait for video metadata.
+         */
+
+        await new Promise(
+            resolve => {
+
+                if (
+                    video.readyState >= 2
+                ) {
+
+                    resolve();
+
+                }
+
+                else {
+
+                    video.onloadedmetadata =
+                        function() {
+
+                            resolve();
+
+                        };
+
+                }
+
+            }
+        );
+
+
+        /*
+         * Start video.
+         */
+
+        await video.play();
+
+
+        /*
+         * Check dimensions.
+         */
+
+        if (
+            video.videoWidth === 0 ||
+            video.videoHeight === 0
+        ) {
+
+            throw new Error(
+                "Camera opened but video is blank."
+            );
+
+        }
+
+
+        statusText.innerText =
+            currentCamera === "environment"
+                ? "Back camera ready"
+                : "Front camera ready";
+
+
+        console.log(
+            "Camera started:",
+            video.videoWidth,
+            "x",
+            video.videoHeight
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Camera error:",
+            error
+        );
+
+
+        statusText.innerText =
+            "❌ Camera could not start";
+
+
+        verificationText.innerText =
+            error.name
+                ? error.name
+                : "Please allow camera access.";
+
+    }
+
+}
+
+
+/* =================================
+   SWITCH CAMERA
+================================= */
+
+switchButton.addEventListener(
+    "click",
+    async function() {
+
+        if (!recognitionRunning) {
+
+            return;
+
+        }
+
+
+        /*
+         * BACK → FRONT
+         */
+
+        if (
+            currentCamera ===
+            "environment"
+        ) {
+
+            currentCamera = "user";
+
+        }
+
+        /*
+         * FRONT → BACK
+         */
+
+        else {
+
+            currentCamera =
+                "environment";
+
+        }
+
+
+        /*
+         * Start selected camera.
+         */
+
+        await startCamera();
+
+    }
+);
+
+
+/* =================================
+   STOP CAMERA
+================================= */
+
+stopButton.addEventListener(
+    "click",
+    function() {
+
+        recognitionRunning = false;
+
+
+        if (stream) {
+
+            stream.getTracks().forEach(
+                track => track.stop()
+            );
+
+            stream = null;
+
+        }
+
+
+        video.srcObject = null;
+
+
+        statusText.innerText =
+            "Camera stopped.";
+
+        verificationText.innerText =
+            "";
+
+
+        switchButton.disabled = true;
+
+        stopButton.disabled = true;
+
+    }
+);
+
+
+/* =================================
+   CAPTURE FRAME
+================================= */
+
+async function captureAndRecognize() {
+
+    /*
+     * Stop if recognition disabled.
+     */
+
+    if (!recognitionRunning) {
+
+        return;
+
+    }
+
+
+    /*
+     * Prevent overlapping requests.
+     */
+
+    if (recognitionBusy) {
+
+        return;
+
+    }
+
+
+    /*
+     * Camera must be ready.
+     */
+
+    if (
+        !stream ||
+        video.readyState <
+        video.HAVE_ENOUGH_DATA
+    ) {
+
+        return;
+
+    }
+
+
+    recognitionBusy = true;
+
+
+    /*
+     * Camera resolution.
+     */
+
+    canvas.width =
+        video.videoWidth;
+
+    canvas.height =
+        video.videoHeight;
+
+
+    const context =
+        canvas.getContext("2d");
+
+
+    /*
+     * IMPORTANT:
+     *
+     * NEVER flip the canvas.
+     *
+     * The front-camera preview may be
+     * mirrored, but the image sent to
+     * Flask remains normal.
+     */
+
+    context.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+     * Convert frame to JPEG.
+     */
+
+    const imageData =
+        canvas.toDataURL(
+            "image/jpeg",
+            0.80
+        );
+
+
+    try {
+
+        /*
+         * Send image to Flask.
+         */
+
+        const response =
+            await fetch(
+                "/api/recognize",
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        image: imageData
+                    })
+
+                }
+            );
+
+
+        /*
+         * Read Flask response.
+         */
+
+        const result =
+            await response.json();
+
+
+        /* =========================
+           STATUS
+        ========================= */
+
+        if (result.message) {
+
+            statusText.innerText =
+                result.message;
+
+        }
+
+
+        /* =========================
+           VERIFICATION
+        ========================= */
+
+        if (
+            result.verification_count
+        ) {
+
+            verificationText.innerText =
+                "Verification: " +
+                result.verification_count +
+                " / 5";
+
+        }
+
+        else {
+
+            verificationText.innerText =
+                "";
+
+        }
+
+
+        /* =========================
+           SUCCESS
+        ========================= */
+
+        if (
+            result.attendance_marked ||
+            result.already_verified
+        ) {
+
+            /*
+             * Show success.
+             */
+        if (result.already_verified) {
+            statusText.innerText =
+                "⚠️ Attendance already verified today";
+        } else {
+            statusText.innerText =
+                "✅ Attendance marked successfully";
+        }
+
+            verificationText.innerText =
+                result.name
+                    ? result.name +
+                      " (" +
+                      result.student_id +
+                      ")"
+                    : "";
+
+
+            /*
+             * STOP RECOGNITION
+             */
+
+            recognitionRunning = false;
+
+
+            /*
+             * STOP CAMERA
+             */
+
+            if (stream) {
+
+                stream.getTracks().forEach(
+                    track => track.stop()
+                );
+
+                stream = null;
+
+            }
+
+
+            video.srcObject = null;
+
+
+            /*
+             * Disable controls.
+             */
+
+            switchButton.disabled = true;
+
+            stopButton.disabled = true;
+
+
+            /*
+             * Return to admin dashboard
+             * after 2 seconds.
+             */
+
+            setTimeout(
+                function() {
+
+                    window.location.href =
+                        "/admin";
+
+                },
+                2000
+            );
+
+        }
+
+
+        /*
+         * IMPORTANT:
+         *
+         * If attendance is NOT marked:
+         *
+         * ❌ Do NOT stop camera
+         * ❌ Do NOT redirect
+         *
+         * Keep scanning.
+         */
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Recognition error:",
+            error
+        );
+
+
+        /*
+         * Temporary connection error.
+         * Keep camera running.
+         */
+
+        statusText.innerText =
+            "Recognition connection error. Retrying...";
+
+    }
+
+
+    recognitionBusy = false;
+
+}
+
+
+/* =================================
+   RECOGNITION LOOP
+================================= */
+
+setInterval(
+    captureAndRecognize,
+    500
+);
+
+
+/* =================================
+   INITIAL CAMERA
+================================= */
+
+/*
+ * BACK CAMERA STARTS FIRST.
+ */
+
+startCamera();
+
+</script>
+
+</body>
+
+</html>

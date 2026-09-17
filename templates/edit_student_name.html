@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Edit Student Name</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 60px auto;
+        }
+
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .student-id {
+            background: #f1f3f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        button,
+        .button {
+            display: inline-block;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 15px;
+            margin-right: 8px;
+        }
+
+        button:hover,
+        .button:hover {
+            background: #444;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <div class="box">
+
+        <h1>✏️ Edit Student Name</h1>
+
+        <div class="student-id">
+            <strong>Student ID:</strong>
+            {{ student_id }}
+        </div>
+
+        <form method="POST">
+
+            <label for="name">
+                Student Name
+            </label>
+
+            <input
+                type="text"
+                id="name"
+                name="name"
+                value="{{ student['name'] }}"
+                required
+            >
+
+            <button type="submit">
+                💾 Save Name
+            </button>
+
+            <a href="/students" class="button">
+                Cancel
+            </a>
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

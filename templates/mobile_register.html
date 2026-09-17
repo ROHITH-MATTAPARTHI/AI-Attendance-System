@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Face Registration</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            padding: 15px;
+        }
+
+        h2 {
+            margin: 8px 0 5px;
+        }
+
+        .student-info {
+            margin-bottom: 15px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .camera-box {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 15px;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+            background: #000;
+        }
+
+        /* Mirror ONLY front-camera preview */
+        video.front-camera {
+            transform: scaleX(-1);
+        }
+
+        .face-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 65%;
+            height: 75%;
+            transform: translate(-50%, -50%);
+            border: 3px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .status {
+            margin: 15px 0 8px;
+            font-size: 17px;
+            min-height: 25px;
+        }
+
+        .count {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #switchCamera {
+            background: #444;
+            color: white;
+        }
+
+        #startCapture {
+            background: #1976d2;
+            color: white;
+        }
+
+        #stopCamera {
+            background: #b71c1c;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Face Registration</h2>
+
+    <div class="student-info">
+        <div>
+            <strong>Name:</strong> {{ student_name }}
+        </div>
+
+        <div>
+            <strong>ID:</strong> {{ student_id }}
+        </div>
+    </div>
+
+    <div class="camera-box">
+
+        <video id="video"
+               autoplay
+               playsinline>
+        </video>
+
+        <div class="face-guide"></div>
+
+    </div>
+
+    <div id="status" class="status">
+        Starting back camera...
+    </div>
+
+    <div id="count" class="count">
+        0 / {{ capture_target }}
+    </div>
+
+    <button id="switchCamera">
+        🔄 Switch Camera
+    </button>
+
+    <button id="startCapture">
+        📸 Start Face Capture
+    </button>
+
+    <button id="stopCamera">
+        ⛔ Stop Camera
+    </button>
+
+    <canvas id="canvas"></canvas>
+
+</div>
+
+
+<script>
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+
+const statusText = document.getElementById("status");
+const countText = document.getElementById("count");
+
+const switchButton = document.getElementById("switchCamera");
+const startButton = document.getElementById("startCapture");
+const stopButton = document.getElementById("stopCamera");
+
+
+/* ==============================
+   CAMERA SETTINGS
+================================ */
+
+let stream = null;
+
+/*
+ * BACK CAMERA IS PRIMARY
+ */
+let currentCamera = "environment";
+
+let captureStarted = false;
+let imageCount = 0;
+let registrationFinished = false;
+
+const TOTAL_IMAGES = {{ capture_target | tojson }};
+
+
+/* ==============================
+   START CAMERA
+================================ */
+
+async function startCamera() {
+
+    try {
+
+        /*
+         * Stop previous camera
+         */
+        if (stream) {
+
+            stream.getTracks().forEach(track => {
+                track.stop();
+            });
+
+            stream = null;
+        }
+
+
+        statusText.innerText =
+            currentCamera === "environment"
+                ? "Starting back camera..."
+                : "Starting front camera...";
+
+
+        /*
+         * Request camera
+         */
+        stream = await navigator.mediaDevices.getUserMedia({
+
+            video: {
+
+                facingMode: {
+                    exact: currentCamera
+                },
+
+                width: {
+                    ideal: 640
+                },
+
+                height: {
+                    ideal: 480
+                }
+
+            },
+
+            audio: false
+
+        });
+
+
+        /*
+         * Attach stream
+         */
+        video.srcObject = stream;
+
+
+        /*
+         * Mirror ONLY front camera preview.
+         *
+         * The actual captured frame will NOT
+         * be flipped.
+         */
+        if (currentCamera === "user") {
+
+            video.classList.add("front-camera");
+
+        } else {
+
+            video.classList.remove("front-camera");
+
+        }
+
+
+        await video.play();
+
+
+        statusText.innerText =
+            currentCamera === "environment"
+                ? "Back camera ready"
+                : "Front camera ready";
+
+
+    } catch (error) {
+
+        console.error("Camera error:", error);
+
+
+        /*
+         * Some phones may not support exact
+         * facingMode. Try ideal mode.
+         */
+        try {
+
+            if (stream) {
+
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                });
+
+                stream = null;
+            }
+
+
+            stream = await navigator.mediaDevices.getUserMedia({
+
+                video: {
+
+                    facingMode: {
+                        ideal: currentCamera
+                    },
+
+                    width: {
+                        ideal: 640
+                    },
+
+                    height: {
+                        ideal: 480
+                    }
+
+                },
+
+                audio: false
+
+            });
+
+
+            video.srcObject = stream;
+
+
+            if (currentCamera === "user") {
+
+                video.classList.add("front-camera");
+
+            } else {
+
+                video.classList.remove("front-camera");
+
+            }
+
+
+            await video.play();
+
+
+            statusText.innerText =
+                currentCamera === "environment"
+                    ? "Back camera ready"
+                    : "Front camera ready";
+
+
+        } catch (secondError) {
+
+            console.error(
+                "Camera fallback error:",
+                secondError
+            );
+
+            statusText.innerText =
+                "Camera access failed. Please allow camera permission.";
+
+        }
+
+    }
+
+}
+
+
+/* ==============================
+   SWITCH CAMERA
+================================ */
+
+switchButton.addEventListener(
+    "click",
+    async function() {
+
+        /*
+         * Don't switch during capture.
+         */
+        if (captureStarted) {
+
+            statusText.innerText =
+                "Please stop capture before switching camera.";
+
+            return;
+        }
+
+
+        if (currentCamera === "environment") {
+
+            currentCamera = "user";
+
+        } else {
+
+            currentCamera = "environment";
+
+        }
+
+
+        await startCamera();
+
+    }
+);
+
+
+/* ==============================
+   START CAPTURE
+================================ */
+
+startButton.addEventListener(
+    "click",
+    function() {
+
+        if (!stream) {
+
+            statusText.innerText =
+                "Camera is not ready.";
+
+            return;
+        }
+
+
+        if (captureStarted) {
+            return;
+        }
+
+
+        /*
+         * Reset count
+         */
+        imageCount = 0;
+
+        captureStarted = true;
+
+
+        /*
+         * Disable controls while capturing
+         */
+        startButton.disabled = true;
+        switchButton.disabled = true;
+
+
+        statusText.innerText =
+            "Keep your face inside the guide.";
+
+
+        captureNextImage();
+
+    }
+);
+
+
+/* ==============================
+   CAPTURE NEXT IMAGE
+================================ */
+
+async function captureNextImage() {
+
+    /*
+     * Stop if user stopped capture
+     */
+    if (!captureStarted) {
+        return;
+    }
+
+
+    /*
+     * Stop at the configured target.
+     */
+    if (imageCount >= TOTAL_IMAGES) {
+
+        finishCapture();
+
+        return;
+    }
+
+
+    /*
+     * Wait until video is ready
+     */
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+
+        setTimeout(
+            captureNextImage,
+            200
+        );
+
+        return;
+    }
+
+
+    /*
+     * Set canvas to actual camera resolution
+     */
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+
+    const context =
+        canvas.getContext("2d");
+
+
+    /*
+     * IMPORTANT:
+     *
+     * We DO NOT flip the canvas.
+     *
+     * Even if front preview is mirrored,
+     * the saved image remains normal.
+     */
+    context.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+     * Convert image to JPEG
+     */
+    const imageData =
+        canvas.toDataURL(
+            "image/jpeg",
+            0.85
+        );
+
+
+    try {
+
+        /*
+         * Send image to Flask
+         */
+        const response =
+            await fetch(
+                "/api/register-face",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        image: imageData
+                    })
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        /*
+         * Flask successfully saved image
+         */
+        if (result.success) {
+
+            imageCount =
+                result.count;
+
+
+            countText.innerText =
+                imageCount +
+                " / " +
+                TOTAL_IMAGES;
+
+
+            statusText.innerText =
+                "Captured image " +
+                imageCount +
+                " of " +
+                TOTAL_IMAGES;
+
+
+            /*
+             * Finished the configured number of images.
+             */
+            if (
+                imageCount >=
+                TOTAL_IMAGES
+            ) {
+
+                finishCapture();
+
+                return;
+            }
+
+
+        } else {
+
+            /*
+             * Face not detected /
+             * multiple faces /
+             * other Flask validation
+             */
+            statusText.innerText =
+                result.message;
+
+
+            /*
+             * Don't increase image count
+             */
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Registration error:",
+            error
+        );
+
+
+        statusText.innerText =
+            "Connection error. Retrying...";
+
+    }
+
+
+    /*
+     * Wait before next capture
+     */
+    if (captureStarted) {
+
+        setTimeout(
+            captureNextImage,
+            250
+        );
+
+    }
+
+}
+
+
+/* ==============================
+   FINISH CAPTURE
+================================ */
+
+function finishCapture() {
+
+    if (registrationFinished) {
+        return;
+    }
+
+    registrationFinished = true;
+
+    captureStarted = false;
+
+
+    startButton.disabled = false;
+    switchButton.disabled = false;
+
+
+    statusText.innerText =
+        "✅ " + TOTAL_IMAGES + " face images captured successfully!";
+
+
+    countText.innerText =
+        TOTAL_IMAGES +
+        " / " +
+        TOTAL_IMAGES;
+
+    setTimeout(
+        function() {
+            window.location.href = "/students";
+        },
+        2000
+    );
+
+
+    /*
+     * Stop camera after registration
+     */
+    if (stream) {
+
+        stream.getTracks().forEach(track => {
+            track.stop();
+        });
+
+        stream = null;
+
+    }
+
+}
+
+
+/* ==============================
+   STOP CAMERA
+================================ */
+
+stopButton.addEventListener(
+    "click",
+    function() {
+
+        captureStarted = false;
+
+
+        if (stream) {
+
+            stream.getTracks().forEach(track => {
+                track.stop();
+            });
+
+            stream = null;
+        }
+
+
+        startButton.disabled = false;
+        switchButton.disabled = false;
+
+
+        statusText.innerText =
+            "Camera stopped.";
+
+    }
+);
+
+
+/* ==============================
+   INITIAL CAMERA
+================================ */
+
+/*
+ * START WITH BACK CAMERA
+ */
+startCamera();
+
+</script>
+
+</body>
+</html>

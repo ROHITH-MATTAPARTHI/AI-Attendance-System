@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Monthly Reports</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .month {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f3f5;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            text-decoration: none;
+            margin-right: 8px;
+        }
+
+        .button:hover {
+            background: #444;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>📅 Monthly Attendance Reports</h1>
+
+    <form method="GET" action="/monthly-reports">
+
+    <label for="month">
+        Select Month:
+    </label>
+
+    <input
+        type="month"
+        id="month"
+        name="month"
+        value="{{ month }}"
+        required
+    >
+
+    <button type="submit">
+        📊 View Report
+    </button>
+
+</form>
+
+<div class="month">
+    Showing report for: {{ month }}
+</div>
+
+<a
+    href="/export-monthly-report?month={{ month }}"
+    class="button"
+>
+    📥 Export to Excel
+</a>
+
+    <div class="card">
+
+        <h2>Student Attendance</h2>
+
+        {% if reports %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>S.No</th>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Present Days</th>
+                    <th>Absent Days</th>
+                    <th>Attendance %</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for student in reports %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+                        {{ student["student_id"] }}
+                    </td>
+
+                    <td>
+                        {{ student["student_name"] }}
+                    </td>
+
+                    <td>
+                        {{ student["present_days"] }}
+                    </td>
+
+                    <td>
+
+            
+                        {{ student["absent_days"] }}
+                    </td>
+
+                    <td>
+                        {{ student["attendance_percentage"] }}%
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+        {% else %}
+
+        <p>
+            No attendance records found for this month.
+        </p>
+
+        {% endif %}
+
+    </div>
+
+    <a href="/admin" class="button">
+        ⬅️ Back to Dashboard
+    </a>
+
+    <a href="/logout" class="button">
+        🚪 Logout
+    </a>
+
+</div>
+
+</body>
+
+</html>
